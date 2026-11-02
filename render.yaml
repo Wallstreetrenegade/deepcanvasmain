@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: deepcanvas
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./docker/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    disk:
+      name: deepcanvas-data
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: HOME
+        value: /var/data
+      - key: WEB_HOST
+        value: 127.0.0.1
+      - key: WEB_PORT
+        value: "19000"
+      - key: WEB_PATH
+        value: /ws
+      - key: LOG_LEVEL
+        value: INFO

@@ -1,0 +1,396 @@
+.video-meeting {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  background:
+    radial-gradient(520px 260px at 70% 0%, rgba(34, 211, 197, 0.08), transparent 65%),
+    linear-gradient(180deg, color-mix(in oklab, var(--panel-strong) 84%, black), var(--bg));
+}
+
+.video-meeting__topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.1rem;
+}
+
+.video-meeting__layout {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(16.5rem, 21rem) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.video-meeting__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: color-mix(in oklab, var(--panel) 86%, black);
+  padding: 1rem;
+}
+
+.video-meeting__form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.video-meeting__error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--border-danger);
+  border-radius: var(--radius-md);
+  background: var(--danger-subtle);
+  color: var(--danger);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 0.7rem 0.75rem;
+}
+
+.video-meeting__error button {
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.35rem 0.55rem;
+}
+
+.video-meeting__field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.video-meeting__field span,
+.video-meeting__invite > span,
+.video-meeting__brand-card > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.video-meeting__field input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--card) 90%, black);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 0.72rem 0.78rem;
+  outline: none;
+  transition:
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease,
+    background var(--duration-fast) ease;
+}
+
+.video-meeting__field input:focus {
+  border-color: var(--border-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 16%, transparent);
+}
+
+.video-meeting__inline-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+}
+
+.video-meeting__inline-control button,
+.video-meeting__invite button,
+.video-meeting__primary,
+.video-meeting__secondary {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.72rem 0.78rem;
+  transition:
+    border-color var(--duration-fast) ease,
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) ease;
+}
+
+.video-meeting__inline-control button,
+.video-meeting__secondary,
+.video-meeting__invite button {
+  background: color-mix(in oklab, var(--panel-strong) 88%, black);
+  color: var(--text);
+}
+
+.video-meeting__inline-control button:hover,
+.video-meeting__secondary:hover,
+.video-meeting__invite button:hover {
+  border-color: var(--border-accent);
+  color: var(--text-strong);
+  transform: translateY(-1px);
+}
+
+.video-meeting__toggle-row {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.video-meeting__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--card) 88%, black);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.6rem 0.7rem;
+}
+
+.video-meeting__toggle input {
+  accent-color: var(--accent);
+}
+
+.video-meeting__actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.video-meeting__primary {
+  border-color: var(--border-accent);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 82%, white), var(--accent));
+  color: #021617;
+}
+
+.video-meeting__primary:hover {
+  transform: translateY(-1px);
+}
+
+.video-meeting__secondary {
+  width: 100%;
+}
+
+.video-meeting__brand-card,
+.video-meeting__invite,
+.video-meeting__notes {
+  display: grid;
+  gap: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--card) 88%, black), var(--card));
+  box-shadow: inset 0 1px 0 var(--card-highlight);
+  padding: 0.85rem;
+}
+
+.video-meeting__brand-card strong,
+.video-meeting__invite strong {
+  color: var(--text-strong);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.video-meeting__brand-card p,
+.video-meeting__invite p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.video-meeting__invite-actions {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.video-meeting__invite a {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--panel-strong) 88%, black);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.72rem 0.78rem;
+  text-decoration: none;
+  transition:
+    border-color var(--duration-fast) ease,
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) ease;
+}
+
+.video-meeting__invite a:hover {
+  border-color: var(--border-accent);
+  color: var(--text-strong);
+  transform: translateY(-1px);
+}
+
+.video-meeting__notes div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.video-meeting__notes strong {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.video-meeting__notes span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-meeting__stage {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    color-mix(in oklab, var(--bg) 92%, black);
+  background-size: 36px 36px;
+}
+
+.video-meeting__stage.is-live {
+  background: #080b12;
+}
+
+.video-meeting__stage > div,
+.video-meeting__stage iframe {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.video-meeting__empty {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.video-meeting__empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--accent-subtle) 70%, var(--panel));
+  color: var(--accent);
+}
+
+.video-meeting__empty-icon svg {
+  width: 2.1rem;
+  height: 2.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.video-meeting__empty h3 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 1.35rem;
+}
+
+.video-meeting__empty p {
+  max-width: 28rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.video-meeting__spinner {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.85rem;
+  background: #080b12;
+  color: var(--text-strong);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.video-meeting__spinner-mark {
+  width: 2.3rem;
+  height: 2.3rem;
+  border: 3px solid rgba(255, 255, 255, 0.16);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: videoMeetingSpin 0.8s linear infinite;
+}
+
+@keyframes videoMeetingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 920px) {
+  .video-meeting__layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(24rem, 1fr);
+  }
+
+  .video-meeting__panel {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 560px) {
+  .video-meeting__topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .video-meeting__invite-actions,
+  .video-meeting__toggle-row,
+  .video-meeting__inline-control {
+    grid-template-columns: 1fr;
+  }
+}

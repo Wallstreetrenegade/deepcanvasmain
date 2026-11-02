@@ -1,0 +1,11 @@
+﻿{
+  "name": "deepcanvas-ai-claw",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd jiuwenclaw/web && npm run dev",
+    "build": "cd jiuwenclaw/web && npm run build",
+    "deploy": "vercel --prod"
+  },
+  "license": "MIT"
+}

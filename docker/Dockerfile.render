@@ -1,0 +1,40 @@
+FROM node:20-bookworm-slim AS web-build
+
+WORKDIR /app
+
+COPY jiuwenclaw/package*.json ./jiuwenclaw/
+COPY jiuwenclaw/scripts ./jiuwenclaw/scripts
+COPY jiuwenclaw/resources ./jiuwenclaw/resources
+COPY jiuwenclaw/web ./jiuwenclaw/web
+
+WORKDIR /app/jiuwenclaw
+RUN npm ci
+
+WORKDIR /app/jiuwenclaw/web
+RUN npm ci && npm run build
+
+
+FROM python:3.11-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HOME=/var/data
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /var/data
+
+COPY . /app
+COPY --from=web-build /app/jiuwenclaw/web/dist /app/jiuwenclaw/web/dist
+
+RUN pip install --upgrade pip && pip install .
+
+EXPOSE 10000
+
+CMD ["python", "-m", "jiuwenclaw.render_entry"]

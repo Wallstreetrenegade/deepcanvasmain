@@ -1,0 +1,2 @@
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+jiuwenclaw/web/public/assets/ly.img.video/videos/*.mp4 -filter -diff -merge -text

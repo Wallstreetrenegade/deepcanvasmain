@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#05090c" />
+    <title>JiuwenClaw</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Theme initialization - default to dark
+      (function() {
+        const themePreferenceVersion = localStorage.getItem('themePreferenceVersion');
+        let theme = localStorage.getItem('theme');
+        if (themePreferenceVersion !== '2') {
+          theme = 'dark';
+          localStorage.setItem('theme', 'dark');
+          localStorage.setItem('themePreferenceVersion', '2');
+        }
+        if (theme === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      })();
+    </script>
+  </body>
+</html>

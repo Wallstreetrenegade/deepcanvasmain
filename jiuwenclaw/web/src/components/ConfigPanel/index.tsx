@@ -1,0 +1,885 @@
+import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from 'react-i18next';
+import { PROVIDER_DEFAULTS, getProviderModels, getProviderOptions, normalizeModelSelection, providerKeyParts } from '../../config/modelProviders';
+import { useChatStore } from '../../stores';
+import { PermissionsToolsEditor } from "./PermissionsToolsEditor";
+
+interface ConfigPanelProps {
+  config: Record<string, unknown> | null;
+  isConnected: boolean;
+  onSaveConfig: (updates: Record<string, string>) => Promise<void>;
+  /** 校验默认模型配置（api_base / api_key / model / model_provider）能否完成一次最小 LLM 请求 */
+  onValidateModel?: (fields: {
+    api_base: string;
+    api_key: string;
+    model: string;
+    model_provider: string;
+  }) => Promise<void>;
+  /** 首次进入配置页时展开的分组 tag（如 third_party_api）；离开配置页时由 App 清空 */
+  initialExpandGroupTag?: string | null;
+}
+
+interface ConfigGroup {
+  tag: string;
+  label: string;
+  keys: [string, string][];
+  order?: number;
+}
+
+const MODEL_DEFAULT_KEYS = new Set(["api_base", "api_key", "model", "model_provider"]);
+const MODEL_VIDEO_KEYS = new Set(["video_api_base", "video_api_key", "video_model", "video_provider"]);
+const MODEL_AUDIO_KEYS = new Set(["audio_api_base", "audio_api_key", "audio_model", "audio_provider"]);
+const MODEL_VISION_KEYS = new Set(["vision_api_base", "vision_api_key", "vision_model", "vision_provider"]);
+const EMBED_KEYS = new Set(["embed_api_base", "embed_api_key", "embed_model"]);
+const FEATURES_API_KEYS = new Set(["features_provider", "features_model", "features_api_base", "features_api_key"]);
+const THIRD_PARTY_API_KEYS = new Set([
+  "jina_api_key",
+  "bocha_api_key",
+  "perplexity_api_key",
+  "serper_api_key",
+  "github_token",
+]);
+const REQUIRED_MODEL_FIELDS = ["api_base", "api_key", "model", "model_provider"] as const;
+const REQUIRED_MODEL_FIELD_SET = new Set<string>(REQUIRED_MODEL_FIELDS);
+const EVOLUTION_KEYS = new Set(["evolution_auto_scan"]);
+const FREE_SEARCH_BOOLEAN_KEYS = new Set(["free_search_ddg_enabled", "free_search_bing_enabled"]);
+const FREE_SEARCH_KEYS = new Set([...FREE_SEARCH_BOOLEAN_KEYS, "free_search_proxy_url"]);
+
+const MEMORY_KEYS = new Set(["memory_forbidden_enabled", "memory_forbidden_description"]);
+
+function classifyKey(key: string): string {
+  if (MODEL_DEFAULT_KEYS.has(key)) return "model_default";
+  if (MODEL_VIDEO_KEYS.has(key)) return "model_video";
+  if (MODEL_AUDIO_KEYS.has(key)) return "model_audio";
+  if (MODEL_VISION_KEYS.has(key)) return "model_vision";
+  if (EMBED_KEYS.has(key)) return "embed";
+  if (FEATURES_API_KEYS.has(key)) return "features_api";
+  if (THIRD_PARTY_API_KEYS.has(key)) return "third_party_api";
+  if (EVOLUTION_KEYS.has(key)) return "evolution";
+  if (FREE_SEARCH_KEYS.has(key)) return "free_search";
+  if (MEMORY_KEYS.has(key)) return "memory";
+  if (key === "context_engine_enabled" || key === "kv_cache_affinity_enabled") return "context_engine";
+  if (key === "permissions_enabled") return "permissions";
+  if (key.startsWith("feishu")) return "feishu";
+  return "other";
+}
+
+const MODEL_GROUP_TAGS = new Set(["model_default", "model_video", "model_audio", "model_vision"]);
+
+function getGroupIcon(tag: string) {
+  if (MODEL_GROUP_TAGS.has(tag)) {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3v4.5m4.5-4.5V6M3 10.5h18M4.5 6.75h15A1.5 1.5 0 0121 8.25v9A3.75 3.75 0 0117.25 21h-10.5A3.75 3.75 0 013 17.25v-9a1.5 1.5 0 011.5-1.5z" />
+      </svg>
+    );
+  }
+  if (tag === "embed") {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5L12 2.5z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 12l8.5-4.75M12 12L3.5 7.25M12 12v9.5" />
+      </svg>
+    );
+  }
+  if (tag === "features_api") {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3.75 3.75 0 10-7.5 0v2.25h-.75A2.25 2.25 0 005.25 9.75v8.25a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-.75V5.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 12.75v2.25" />
+      </svg>
+    );
+  }
+  if (tag === "third_party_api") {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5A1.5 1.5 0 0121.75 6.75v10.5a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5V6.75a1.5 1.5 0 011.5-1.5z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 9.75h9M7.5 14.25h5.25" />
+      </svg>
+    );
+  }
+  if (tag === "evolution") {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+      </svg>
+    );
+  }
+  if (tag === "memory") {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859" />
+      </svg>
+    );
+  }
+  if (tag === "context_engine") {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
+      </svg>
+    );
+  }
+  if (tag === "permissions") {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 6h9m-9 6h9m-9 6h9M3.75 6h.008v.008H3.75V6zm0 6h.008v.008H3.75V12zm0 6h.008v.008H3.75V18z" />
+    </svg>
+  );
+}
+
+function getGroupToneClass(tag: string): string {
+  if (tag === "model_default") return "text-blue-500 bg-blue-500/10 border-blue-500/20";
+  if (tag === "model_video") return "text-violet-500 bg-violet-500/10 border-violet-500/20";
+  if (tag === "model_audio") return "text-orange-500 bg-orange-500/10 border-orange-500/20";
+  if (tag === "model_vision") return "text-teal-500 bg-teal-500/10 border-teal-500/20";
+  if (tag === "embed") return "text-cyan-500 bg-cyan-500/10 border-cyan-500/20";
+  if (tag === "features_api") return "text-fuchsia-500 bg-fuchsia-500/10 border-fuchsia-500/20";
+  if (tag === "third_party_api") return "text-indigo-500 bg-indigo-500/10 border-indigo-500/20";
+  if (tag === "free_search") return "text-lime-500 bg-lime-500/10 border-lime-500/20";
+  if (tag === "evolution") return "text-amber-500 bg-amber-500/10 border-amber-500/20";
+  if (tag === "memory") return "text-purple-500 bg-purple-500/10 border-purple-500/20";
+  if (tag === "context_engine") return "text-sky-500 bg-sky-500/10 border-sky-500/20";
+  if (tag === "permissions") return "text-rose-500 bg-rose-500/10 border-rose-500/20";
+  if (tag === "email") return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+  return "text-text-muted bg-secondary/70 border-border";
+}
+
+/** 模型子分组的嵌套样式：左侧色条 + 淡色底，与整体一致、易区分 */
+function getNestedModelStyle(tag: string): string {
+  if (tag === "model_default") return "border-l-2 border-l-blue-500/60 bg-blue-500/[0.06]";
+  if (tag === "model_video") return "border-l-2 border-l-violet-500/60 bg-violet-500/[0.06]";
+  if (tag === "model_audio") return "border-l-2 border-l-orange-500/60 bg-orange-500/[0.06]";
+  if (tag === "model_vision") return "border-l-2 border-l-teal-500/60 bg-teal-500/[0.06]";
+  if (tag === "context_engine") return "border-l-2 border-l-sky-500/60 bg-sky-500/[0.06]";
+  if (tag === "permissions") return "border-l-2 border-l-rose-500/60 bg-rose-500/[0.06]";
+  return "border-l-2 border-l-border bg-secondary/20";
+}
+
+function isBooleanKey(key: string): boolean {
+  return (
+    key === "smtp_use_tls" ||
+    EVOLUTION_KEYS.has(key) ||
+    FREE_SEARCH_BOOLEAN_KEYS.has(key) ||
+    key === "context_engine_enabled" ||
+    key === "kv_cache_affinity_enabled" ||
+    key === "permissions_enabled" ||
+    key === "memory_forbidden_enabled"
+  );
+}
+
+function parseBoolValue(value: string): boolean {
+  return value.toLowerCase() === "true" || value === "1";
+}
+
+function getBooleanKeyLabel(key: string, t: (key: string) => string): string {
+  const labels: Record<string, string> = {
+    smtp_use_tls: t('config.booleanLabels.smtpUseTls'),
+    evolution_auto_scan: t('config.booleanLabels.evolutionAutoScan'),
+    free_search_ddg_enabled: t('config.booleanLabels.freeSearchDdg'),
+    free_search_bing_enabled: t('config.booleanLabels.freeSearchBing'),
+    context_engine_enabled: t('config.booleanLabels.enabled'),
+    kv_cache_affinity_enabled: t('config.booleanLabels.kvCacheAffinity'),
+    permissions_enabled: t('config.booleanLabels.enabled'),
+    memory_forbidden_enabled: t('config.booleanLabels.enabled'),
+  };
+  return labels[key] ?? key;
+}
+
+function isSensitiveKey(key: string): boolean {
+  const lower = key.toLowerCase();
+  return (
+    lower.includes("key") ||
+    lower.includes("secret") ||
+    lower.includes("token") ||
+    lower.includes("password") ||
+    lower.includes("proxy")
+  );
+}
+
+function normalizeConfigValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function getGroupMeta(t: (key: string) => string): Record<string, { label: string; order: number; hint: string }> {
+  return {
+    model_default: { label: t('config.groups.modelDefault.label'), order: 0, hint: t('config.groups.modelDefault.hint') },
+    model_video: { label: t('config.groups.modelVideo.label'), order: 1, hint: t('config.groups.modelVideo.hint') },
+    model_audio: { label: t('config.groups.modelAudio.label'), order: 2, hint: t('config.groups.modelAudio.hint') },
+    model_vision: { label: t('config.groups.modelVision.label'), order: 3, hint: t('config.groups.modelVision.hint') },
+    embed: { label: t('config.groups.embed.label'), order: 4, hint: t('config.groups.embed.hint') },
+    features_api: { label: t('config.groups.featuresApi.label'), order: 5, hint: t('config.groups.featuresApi.hint') },
+    third_party_api: { label: t('config.groups.thirdParty.label'), order: 6, hint: t('config.groups.thirdParty.hint') },
+    free_search: { label: t('config.groups.freeSearch.label'), order: 7, hint: t('config.groups.freeSearch.hint') },
+    evolution: { label: t('config.groups.evolution.label'), order: 8, hint: t('config.groups.evolution.hint') },
+    context_engine: { label: t('config.groups.contextEngine.label'), order: 9, hint: t('config.groups.contextEngine.hint') },
+    permissions: { label: t('config.groups.permissions.label'), order: 10, hint: t('config.groups.permissions.hint') },
+    memory: { label: t('config.groups.memory.label'), order: 11, hint: t('config.groups.memory.hint') },
+    other: { label: t('config.groups.other.label'), order: 12, hint: t('config.groups.other.hint') },
+  };
+}
+
+function isRequiredModelField(key: string): boolean {
+  return REQUIRED_MODEL_FIELD_SET.has(key);
+}
+
+function isProviderKey(key: string): boolean {
+  return key.endsWith("_provider");
+}
+
+/** 表格列显示用：video_api_base -> api_base，避免与分组标题重复 */
+/** i18n 键名映射：字段名 -> 翻译 key（显示名 / placeholder） */
+const KEY_DISPLAY_I18N: Record<string, string> = {
+  features_provider: "config.keys.featuresProvider",
+  features_model: "config.keys.featuresModel",
+  features_api_base: "config.keys.featuresApiBase",
+  features_api_key: "config.keys.featuresApiKey",
+  free_search_proxy_url: "config.keys.freeSearchProxyUrl",
+  memory_forbidden_enabled: "config.keys.memoryForbiddenEnabled",
+  memory_forbidden_description: "config.keys.memoryForbiddenDescription",
+};
+const KEY_PLACEHOLDER_I18N: Record<string, string> = {
+  features_provider: "config.keys.featuresProviderPlaceholder",
+  features_model: "config.keys.featuresModelPlaceholder",
+  features_api_base: "config.keys.featuresApiBasePlaceholder",
+  features_api_key: "config.keys.featuresApiKeyPlaceholder",
+  free_search_proxy_url: "config.keys.freeSearchProxyUrlPlaceholder",
+  memory_forbidden_description: "config.keys.memoryForbiddenDescriptionPlaceholder",
+};
+
+/** 组内字段排序优先级，数字越小越靠前 */
+const KEY_SORT_PRIORITY: Record<string, number> = {
+  free_search_ddg_enabled: 0,
+  free_search_bing_enabled: 1,
+  free_search_proxy_url: 2,
+  memory_forbidden_enabled: 0,
+  memory_forbidden_description: 1,
+};
+
+function getKeyDisplayLabel(key: string, t: (key: string) => string): string {
+  if (KEY_DISPLAY_I18N[key]) return t(KEY_DISPLAY_I18N[key]);
+  const m = key.match(/^(video|audio|vision|features)_(.+)$/);
+  if (m) return m[2];
+  return getBooleanKeyLabel(key, t) ?? key;
+}
+
+function modelProviderKeyForModelKey(key: string): string | null {
+  if (key === "model") return "model_provider";
+  const m = key.match(/^(features_|video_|audio_|vision_)?model$/);
+  if (!m) return null;
+  return `${m[1] ?? ""}provider`;
+}
+
+function bucketForModelKey(key: string) {
+  const providerKey = modelProviderKeyForModelKey(key);
+  return providerKey ? providerKeyParts(providerKey)?.bucket ?? null : null;
+}
+
+function GroupSection({
+  group,
+  draftValues,
+  onChange,
+  defaultOpen,
+  t,
+  nested = false,
+  afterTable,
+}: {
+  group: ConfigGroup;
+  draftValues: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+  defaultOpen: boolean;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  nested?: boolean;
+  /** Rendered below the key/value table when the section is expanded (e.g. default model test action). */
+  afterTable?: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({});
+  const toneClass = getGroupToneClass(group.tag);
+  const groupMeta = getGroupMeta(t);
+  const hint = groupMeta[group.tag]?.hint ?? t('config.groupFallback');
+
+  const toggleFieldVisible = (key: string) => {
+    setVisibleFields((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const nestedStyle = nested ? getNestedModelStyle(group.tag) : "";
+  const modelSuggestionIds = group.keys.reduce<Record<string, string>>((acc, [key]) => {
+    const providerKey = modelProviderKeyForModelKey(key);
+    const bucket = bucketForModelKey(key);
+    if (!providerKey || !bucket) return acc;
+    const provider = draftValues[providerKey] ?? "";
+    const models = getProviderModels(bucket, provider);
+    if (models.length > 0) {
+      acc[key] = `model-options-${group.tag}-${key}`;
+    }
+    return acc;
+  }, {});
+  return (
+    <div
+      id={nested ? undefined : `config-group-${group.tag}`}
+      className={
+      nested
+        ? "rounded-r-md overflow-hidden border border-border/50"
+        : "rounded-xl border border-border bg-card/70 backdrop-blur-sm overflow-hidden shadow-sm"
+    }
+    >
+      <button
+        onClick={() => setOpen(!open)}
+        className={`w-full flex items-center justify-between transition-colors text-sm ${
+          nested ? `py-2 pr-3 pl-4 ${nestedStyle} hover:opacity-90` : "px-4 py-3 bg-secondary/30 hover:bg-secondary/60"
+        }`}
+      >
+        <span className="flex items-center gap-3 min-w-0">
+          <span className={`inline-flex items-center justify-center rounded-md border ${toneClass} ${nested ? "w-6 h-6" : "w-7 h-7"}`}>
+            {getGroupIcon(group.tag)}
+          </span>
+          <span className="min-w-0 text-left">
+            <span className="block font-medium text-text">{group.label}</span>
+            <span className="block text-xs text-text-muted truncate">{hint}</span>
+          </span>
+        </span>
+        <span className={`flex items-center gap-2 text-text-muted ${nested ? "ml-2" : "ml-3"}`}>
+          <span className="text-[11px] px-2 py-0.5 rounded-full border border-border bg-secondary/60">
+            {t('config.itemsCount', { count: group.keys.length })}
+          </span>
+          <svg
+            className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </span>
+      </button>
+      {open && (
+        <>
+        <table className="w-full text-sm border-t border-border">
+          <tbody>
+            {group.keys.map(([key, value]) => (
+              <tr key={key} className="border-t border-border first:border-t-0 even:bg-secondary/10 hover:bg-secondary/25 transition-colors">
+                <td className="px-4 py-2.5 align-middle mono text-xs text-text-muted w-[32%]" title={key}>{getKeyDisplayLabel(key, t)}</td>
+                <td className="px-4 py-2.5 break-all text-[13px] align-middle">
+                  {isBooleanKey(key) ? (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex w-3 justify-center shrink-0 font-semibold leading-none select-none ${
+                          isRequiredModelField(key) ? "text-danger" : "text-transparent"
+                        }`}
+                        aria-hidden="true"
+                      >
+                        *
+                      </span>
+                      <div className="h-[calc(1.25rem+16px)] flex items-center">
+                        <label
+                          aria-label={getBooleanKeyLabel(key, t) ?? key}
+                          title={getBooleanKeyLabel(key, t) ?? key}
+                          className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                            parseBoolValue(draftValues[key] ?? value) ? "bg-ok" : "bg-secondary"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={parseBoolValue(draftValues[key] ?? value)}
+                            onChange={() => onChange(key, parseBoolValue(draftValues[key] ?? value) ? "false" : "true")}
+                            aria-label={getBooleanKeyLabel(key, t) ?? key}
+                          />
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ${
+                              parseBoolValue(draftValues[key] ?? value) ? "translate-x-4" : "translate-x-0"
+                            }`}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ) : isProviderKey(key) ? (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex w-3 justify-center shrink-0 font-semibold leading-none select-none ${
+                          isRequiredModelField(key) ? "text-danger" : "text-transparent"
+                        }`}
+                        aria-hidden="true"
+                      >
+                        *
+                      </span>
+                      <div className="flex-1">
+                        <select
+                          value={draftValues[key] ?? value}
+                          onChange={(e) => onChange(key, e.target.value)}
+                          aria-label={getKeyDisplayLabel(key, t)}
+                          title={getKeyDisplayLabel(key, t)}
+                          className="w-full rounded-md border border-border bg-bg px-3 py-2 text-[13px] outline-none focus:border-accent"
+                        >
+                          <option value="" disabled>{t('config.selectModelProvider')}</option>
+                          {getProviderOptions(key).map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex w-3 justify-center shrink-0 font-semibold leading-none select-none ${
+                          isRequiredModelField(key) ? "text-danger" : "text-transparent"
+                        }`}
+                        aria-hidden="true"
+                      >
+                        *
+                      </span>
+                      <div className="relative flex-1">
+                        <input
+                          type={isSensitiveKey(key) && !visibleFields[key] ? "password" : "text"}
+                          value={draftValues[key] ?? value}
+                          onChange={(e) => onChange(key, e.target.value)}
+                          list={modelSuggestionIds[key]}
+                          placeholder={KEY_PLACEHOLDER_I18N[key] ? t(KEY_PLACEHOLDER_I18N[key]) : t('config.enterValue')}
+                          className={`w-full rounded-md border border-border bg-bg px-3 py-2 text-[13px] outline-none focus:border-accent ${isSensitiveKey(key) ? "pr-10" : ""}`}
+                        />
+                        {modelSuggestionIds[key] ? (
+                          <datalist id={modelSuggestionIds[key]}>
+                            {getProviderModels(bucketForModelKey(key) ?? "chat", draftValues[modelProviderKeyForModelKey(key) ?? ""] ?? "").map((model) => (
+                              <option key={model} value={model} />
+                            ))}
+                          </datalist>
+                        ) : null}
+                        {isSensitiveKey(key) ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleFieldVisible(key)}
+                            className="absolute inset-y-0 right-0 flex items-center justify-center w-9 text-text-muted hover:text-text transition-colors"
+                            aria-label={visibleFields[key] ? t('config.hideValue') : t('config.showValue')}
+                            title={visibleFields[key] ? t('config.hideValue') : t('config.showValue')}
+                          >
+                            {visibleFields[key] ? (
+                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.58 10.58A2 2 0 0013.42 13.42" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.88 5.09A10.94 10.94 0 0112 4.9c5.05 0 9.27 3.11 10.5 7.5a11.6 11.6 0 01-3.06 4.88" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.61 6.61A11.6 11.6 0 001.5 12.4c.53 1.9 1.63 3.56 3.11 4.79" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.12 14.12a3 3 0 01-4.24-4.24" />
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M1.5 12s3.75-7.5 10.5-7.5S22.5 12 22.5 12s-3.75 7.5-10.5 7.5S1.5 12 1.5 12z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            )}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {afterTable}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** 模型配置父级：把默认/视频/音频/视觉四个子分组收拢在「模型配置」下 */
+function ModelConfigSection({
+  modelGroups,
+  draftValues,
+  onChange,
+  t,
+  canValidateDefaultModel,
+  validateLoading,
+  validateDisabled,
+  validateDisabledReason,
+  validateStatus,
+  validateMessage,
+  onValidateDefaultModel,
+}: {
+  modelGroups: ConfigGroup[];
+  draftValues: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  canValidateDefaultModel: boolean;
+  validateLoading: boolean;
+  validateDisabled: boolean;
+  validateDisabledReason: string | null;
+  validateStatus: "idle" | "loading" | "ok" | "err";
+  validateMessage: string | null;
+  onValidateDefaultModel: () => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const totalItems = modelGroups.reduce((s, g) => s + g.keys.length, 0);
+
+  return (
+    <div className="rounded-xl border border-blue-500/30 border-border bg-card/70 backdrop-blur-sm overflow-hidden shadow-sm">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-secondary/30 hover:bg-secondary/60 transition-colors text-sm"
+      >
+        <span className="flex items-center gap-3 min-w-0">
+          <span className="inline-flex items-center justify-center w-7 h-7 rounded-md border text-blue-500 bg-blue-500/10 border-blue-500/20">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3v4.5m4.5-4.5V6M3 10.5h18M4.5 6.75h15A1.5 1.5 0 0121 8.25v9A3.75 3.75 0 0117.25 21h-10.5A3.75 3.75 0 013 17.25v-9a1.5 1.5 0 011.5-1.5z" />
+            </svg>
+          </span>
+          <span className="min-w-0 text-left">
+            <span className="block font-medium text-text">{t('config.groups.model.label')}</span>
+            <span className="block text-xs text-text-muted truncate">{t('config.groups.model.hint')}</span>
+          </span>
+        </span>
+        <span className="flex items-center gap-2 text-text-muted ml-3">
+          <span className="text-[11px] px-2 py-0.5 rounded-full border border-border bg-secondary/60">
+            {t('config.itemsCount', { count: totalItems })}
+          </span>
+          <svg
+            className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-border px-2 pb-2 pt-1 space-y-2">
+          {modelGroups.map((group) => (
+            <GroupSection
+              key={group.tag}
+              group={group}
+              draftValues={draftValues}
+              onChange={onChange}
+              defaultOpen={group.tag === "model_default"}
+              t={t}
+              nested
+              afterTable={
+                canValidateDefaultModel && group.tag === "model_default" ? (
+                  <div className="border-t border-border px-4 py-4 bg-secondary/10">
+                    <div className="flex flex-col items-center gap-2.5 text-center">
+                      <button
+                        type="button"
+                        onClick={onValidateDefaultModel}
+                        disabled={validateDisabled}
+                        title={validateDisabledReason ?? undefined}
+                        className="btn !px-3 !py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        {validateLoading ? t("config.validateModel.validating") : t("config.validateModel.button")}
+                      </button>
+                      <p className="text-[11px] leading-snug text-text-muted max-w-sm">
+                        {t("config.validateModel.legend")}
+                      </p>
+                      {validateMessage && validateStatus !== "idle" && validateStatus !== "loading" ? (
+                        <p
+                          className={`text-xs max-w-md break-words ${
+                            validateStatus === "ok" ? "text-ok" : "text-danger"
+                          }`}
+                        >
+                          {validateMessage}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null
+              }
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ConfigPanel({
+  config,
+  isConnected,
+  onSaveConfig,
+  onValidateModel,
+  initialExpandGroupTag = null,
+}: ConfigPanelProps) {
+  const { t } = useTranslation();
+  const isProcessing = useChatStore((s) => s.isProcessing);
+  const [draftValues, setDraftValues] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [modelValidateStatus, setModelValidateStatus] = useState<
+    "idle" | "loading" | "ok" | "err"
+  >("idle");
+  const [modelValidateMessage, setModelValidateMessage] = useState<string | null>(null);
+
+  const normalizedConfig = useMemo<Record<string, string>>(() => {
+    if (!config) return {};
+    const next: Record<string, string> = {};
+    for (const [key, value] of Object.entries(config)) {
+      next[key] = normalizeConfigValue(value);
+    }
+    for (const key of Object.keys(next)) {
+      const providerKey = modelProviderKeyForModelKey(key);
+      const parts = providerKey ? providerKeyParts(providerKey) : null;
+      const provider = providerKey ? next[providerKey] ?? '' : '';
+      if (parts && (key.endsWith('model') || key === 'model')) {
+        next[key] = normalizeModelSelection(parts.bucket, provider, next[key]);
+      }
+    }
+    return next;
+  }, [config]);
+
+  useEffect(() => {
+    setDraftValues(normalizedConfig);
+    setError(null);
+  }, [normalizedConfig]);
+
+  useEffect(() => {
+    setModelValidateStatus("idle");
+    setModelValidateMessage(null);
+  }, [
+    draftValues.api_base,
+    draftValues.api_key,
+    draftValues.model,
+    draftValues.model_provider,
+  ]);
+
+  const groups = useMemo<ConfigGroup[]>(() => {
+    if (!Object.keys(normalizedConfig).length) return [];
+    const buckets: Record<string, [string, string][]> = {};
+    for (const [key, value] of Object.entries(normalizedConfig)) {
+      const tag = classifyKey(key);
+      // 飞书配置已迁移到 ChannelsPanel 管理，这里不再展示。
+      if (tag === "feishu") continue;
+      (buckets[tag] ??= []).push([key, value]);
+    }
+    for (const entries of Object.values(buckets)) {
+      entries.sort(([a], [b]) => {
+        const pa = KEY_SORT_PRIORITY[a] ?? 50;
+        const pb = KEY_SORT_PRIORITY[b] ?? 50;
+        if (pa !== pb) return pa - pb;
+        return a.localeCompare(b);
+      });
+    }
+    const groupMeta = getGroupMeta(t);
+    return Object.entries(buckets)
+      .filter(([tag]) => tag !== 'other')
+      .map(([tag, keys]) => ({ tag, label: groupMeta[tag]?.label ?? tag, keys, order: groupMeta[tag]?.order ?? 99 }))
+      .sort((a, b) => a.order - b.order);
+  }, [normalizedConfig, t]);
+
+  const { modelGroups, otherGroups } = useMemo(() => {
+    const model: ConfigGroup[] = [];
+    const other: ConfigGroup[] = [];
+    for (const g of groups) {
+      if (MODEL_GROUP_TAGS.has(g.tag)) model.push(g);
+      else other.push(g);
+    }
+    return { modelGroups: model, otherGroups: other };
+  }, [groups]);
+
+  useLayoutEffect(() => {
+    if (!initialExpandGroupTag) return;
+    const hasGroup = groups.some((g) => g.tag === initialExpandGroupTag);
+    if (!hasGroup) return;
+    const el = document.getElementById(`config-group-${initialExpandGroupTag}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [groups, initialExpandGroupTag]);
+
+  const totalItems = useMemo(() => groups.reduce((sum, group) => sum + group.keys.length, 0), [groups]);
+  const topLevelGroupCount = (modelGroups.length > 0 ? 1 : 0) + otherGroups.length;
+  const hasChanges = useMemo(() => {
+    const keys = Object.keys(normalizedConfig);
+    return keys.some((key) => (draftValues[key] ?? "") !== normalizedConfig[key]);
+  }, [draftValues, normalizedConfig]);
+  const missingRequiredModelFields = useMemo(
+    () => REQUIRED_MODEL_FIELDS.filter((key) => !(draftValues[key] ?? "").trim()),
+    [draftValues],
+  );
+  const hasMissingRequiredModelFields = missingRequiredModelFields.length > 0;
+
+  const handleFieldChange = (key: string, value: string) => {
+    setDraftValues((prev) => {
+      const next = { ...prev, [key]: value };
+      // When a *_provider select changes, auto-fill the matching api_base and
+      // model for that modality so the user only has to paste an API key.
+      const parts = providerKeyParts(key);
+      if (parts) {
+        const bucket = PROVIDER_DEFAULTS[parts.bucket] ?? {};
+        const defaults = bucket[value];
+        if (defaults) {
+          const baseKey = parts.prefix === "" ? "api_base" : `${parts.prefix}api_base`;
+          const modelKey = parts.prefix === "" ? "model" : `${parts.prefix}model`;
+          if (defaults.api_base) {
+            next[baseKey] = defaults.api_base;
+          }
+          if (defaults.model) {
+            next[modelKey] = defaults.model;
+          }
+        }
+      }
+      return next;
+    });
+    if (error) {
+      setError(null);
+    }
+  };
+
+  const handleCancel = () => {
+    if (!hasChanges) return;
+    setDraftValues(normalizedConfig);
+    setError(null);
+  };
+
+  const handleValidateDefaultModel = () => {
+    if (!onValidateModel) {
+      return;
+    }
+    void (async () => {
+      setModelValidateStatus("loading");
+      setModelValidateMessage(null);
+      try {
+        await onValidateModel({
+          api_base: (draftValues.api_base ?? "").trim(),
+          api_key: (draftValues.api_key ?? "").trim(),
+          model: (draftValues.model ?? "").trim(),
+          model_provider: (draftValues.model_provider ?? "").trim(),
+        });
+        setModelValidateStatus("ok");
+        setModelValidateMessage(t("config.validateModel.success"));
+      } catch {
+        setModelValidateStatus("err");
+        setModelValidateMessage(t("config.validateModel.notWorking"));
+      }
+    })();
+  };
+
+  const handleSaveAndRestart = async () => {
+    if (!hasChanges || saving) return;
+    if (hasMissingRequiredModelFields) {
+      setError(t('config.errors.requiredModelFields', { fields: missingRequiredModelFields.join('、') }));
+      return;
+    }
+    const changedValues = Object.fromEntries(
+      Object.keys(normalizedConfig)
+        .filter((key) => (draftValues[key] ?? "") !== normalizedConfig[key])
+        .map((key) => [key, draftValues[key] ?? ""]),
+    );
+    if (!Object.keys(changedValues).length) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onSaveConfig(changedValues);
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : t('config.errors.saveFailed');
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 min-h-0">
+      <div className="card w-full h-full flex flex-col">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold">{t('config.title')}</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            {isProcessing ? (
+              <span className="text-xs text-amber-600 dark:text-amber-400">{t('config.errors.processingDisabled')}</span>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={!hasChanges || saving}
+              className="btn !px-3 !py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSaveAndRestart()}
+              disabled={!hasChanges || saving || !isConnected || hasMissingRequiredModelFields || isProcessing}
+              className="btn primary !px-3 !py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? t('common.saving') : t('common.save')}
+            </button>
+          </div>
+        </div>
+        {error ? (
+          <div className="mb-4 rounded-md border border-[var(--border-danger)] bg-danger-subtle px-3 py-2 text-sm text-danger">
+            {error}
+          </div>
+        ) : null}
+        {!error && hasMissingRequiredModelFields ? (
+          <div className="mb-4 rounded-md border border-[var(--border-danger)] bg-danger-subtle px-3 py-2 text-sm text-danger">
+            {t('config.requiredIncomplete')}: {missingRequiredModelFields.join('、')}
+          </div>
+        ) : null}
+
+        {!groups.length ? (
+          <div className="text-sm text-text-muted flex-1 min-h-0">
+            {t('config.empty')}
+          </div>
+        ) : (
+          <div className="space-y-3 flex-1 min-h-0 overflow-auto pr-1">
+            <div className="flex items-center justify-between text-xs text-text-muted px-1">
+              <span>{t('config.groupsCount', { count: topLevelGroupCount })}</span>
+              <span className="mono">{t('config.paramsCount', { count: totalItems })}</span>
+            </div>
+            {modelGroups.length > 0 && (
+              <ModelConfigSection
+                modelGroups={modelGroups}
+                draftValues={draftValues}
+                onChange={handleFieldChange}
+                t={t}
+                canValidateDefaultModel={Boolean(onValidateModel)}
+                validateLoading={modelValidateStatus === "loading"}
+                validateDisabled={
+                  !isConnected ||
+                  hasMissingRequiredModelFields ||
+                  modelValidateStatus === "loading"
+                }
+                validateDisabledReason={
+                  !isConnected
+                    ? t("config.validateModel.needConnection")
+                    : hasMissingRequiredModelFields
+                      ? t("config.validateModel.needFields")
+                      : null
+                }
+                validateStatus={modelValidateStatus}
+                validateMessage={modelValidateMessage}
+                onValidateDefaultModel={handleValidateDefaultModel}
+              />
+            )}
+            {otherGroups.map((group) => (
+              <GroupSection
+                key={group.tag}
+                group={group}
+                draftValues={draftValues}
+                onChange={handleFieldChange}
+                defaultOpen={
+                  initialExpandGroupTag != null && group.tag === initialExpandGroupTag
+                }
+                t={t}
+                afterTable={
+                  group.tag === "permissions" ? (
+                    <PermissionsToolsEditor isConnected={isConnected} />
+                  ) : null
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

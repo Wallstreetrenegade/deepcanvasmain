@@ -1,0 +1,13 @@
+.git
+.github
+.firebase
+.playwright-mcp
+.pytest_cache
+logs
+node_modules
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.DS_Store
+jiuwenclaw/web/.env
+jiuwenclaw/web/.env.*

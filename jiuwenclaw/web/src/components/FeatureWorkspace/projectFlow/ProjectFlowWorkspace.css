@@ -1,0 +1,1011 @@
+.project-flow {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.55rem;
+  flex: 1;
+  min-height: 0;
+  padding: 0.55rem;
+}
+
+.project-flow__topbar,
+.project-flow__floating-panel,
+.project-flow__drawing-modal,
+.project-flow__status-toast {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--panel-strong) 90%, black), color-mix(in oklab, var(--card) 90%, black));
+}
+
+.project-flow__topbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'nodes actions'
+    'title title';
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.45rem 0.6rem;
+  border-radius: calc(var(--radius-lg) + 2px);
+}
+
+.project-flow__node-rail,
+.project-flow__template-rail,
+.project-flow__topbar-title,
+.project-flow__drawing-actions,
+.project-flow__action-row,
+.project-flow__checklist-add,
+.project-flow__segmented-row {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.project-flow__node-rail,
+.project-flow__template-rail {
+  min-width: 0;
+  scrollbar-width: none;
+}
+
+.project-flow__node-rail {
+  overflow: visible;
+}
+
+.project-flow__template-rail {
+  overflow-x: auto;
+}
+
+.project-flow__node-rail {
+  grid-area: nodes;
+  position: relative;
+  z-index: 14;
+}
+
+.project-flow__template-rail {
+  grid-area: actions;
+}
+
+.project-flow__topbar-title {
+  grid-area: title;
+}
+
+.project-flow__node-rail::-webkit-scrollbar,
+.project-flow__template-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.project-flow__node-rail {
+  justify-content: flex-start;
+}
+
+.project-flow__template-rail {
+  justify-content: flex-end;
+}
+
+.project-flow__board-title {
+  min-width: 0;
+  width: min(100%, 30rem);
+  border: none;
+  background: transparent;
+  color: var(--text-strong);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-align: left;
+  outline: none;
+}
+
+.project-flow__mode-pill,
+.project-flow__ghost-button,
+.project-flow__danger-button,
+.project-flow__icon-button,
+.project-flow__template-pill,
+.project-flow__segment,
+.project-flow__node-button,
+.project-flow__header-node,
+.project-flow__menu-button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--panel) 92%, black);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform var(--duration-fast) ease, border-color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.project-flow__mode-pill,
+.project-flow__ghost-button,
+.project-flow__danger-button,
+.project-flow__template-pill,
+.project-flow__segment,
+.project-flow__menu-button {
+  padding: 0.42rem 0.68rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.project-flow__ghost-button:hover,
+.project-flow__danger-button:hover,
+.project-flow__mode-pill:hover,
+.project-flow__icon-button:hover,
+.project-flow__template-pill:hover,
+.project-flow__segment:hover,
+.project-flow__header-node:hover,
+.project-flow__node-button:hover,
+.project-flow__menu-button:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--accent) 48%, var(--border));
+}
+
+.project-flow__menu-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.project-flow__menu-button {
+  min-width: 6.6rem;
+  height: 2.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-strong);
+  letter-spacing: 0;
+}
+
+.project-flow__menu-button.is-open {
+  border-color: color-mix(in oklab, var(--accent) 56%, var(--border));
+  background: color-mix(in oklab, var(--accent) 14%, var(--panel));
+}
+
+.project-flow__header-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  flex: 0 0 auto;
+  padding: 0.35rem 0.5rem;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.project-flow__dropdown {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.project-flow__dropdown summary {
+  list-style: none;
+}
+
+.project-flow__dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.project-flow__dropdown[open] > .project-flow__dropdown-summary {
+  border-color: color-mix(in oklab, var(--accent) 56%, var(--border));
+  background: color-mix(in oklab, var(--accent) 12%, var(--panel));
+}
+
+.project-flow__dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  z-index: 12;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 10rem;
+  padding: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--panel-strong) 90%, black), color-mix(in oklab, var(--card) 90%, black));
+  box-shadow: 0 18px 32px rgba(2, 8, 23, 0.3);
+}
+
+.project-flow__dropdown-menu--nodes {
+  min-width: 18rem;
+  max-height: min(30rem, 70vh);
+  overflow: auto;
+}
+
+.project-flow__dropdown-menu--templates {
+  min-width: 15rem;
+}
+
+.project-flow__dropdown-menu--right {
+  left: auto;
+  right: 0;
+}
+
+.project-flow__dropdown-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.52rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--panel) 92%, black);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-flow__dropdown-item small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.69rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.project-flow__dropdown-item:hover {
+  border-color: color-mix(in oklab, var(--accent) 48%, var(--border));
+}
+
+.project-flow__mode-pill.is-active,
+.project-flow__segment.is-active,
+.project-flow__template-pill {
+  border-color: color-mix(in oklab, var(--accent) 56%, var(--border));
+  color: var(--text-strong);
+  background: color-mix(in oklab, var(--accent) 15%, var(--panel));
+}
+
+.project-flow__danger-button {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.25);
+  background: rgba(127, 29, 29, 0.24);
+}
+
+.project-flow__canvas-shell {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: calc(var(--radius-lg) + 6px);
+  border: 1px solid color-mix(in oklab, var(--border) 85%, black);
+  background:
+    radial-gradient(circle at top left, rgba(45, 212, 191, 0.09), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(248, 113, 113, 0.08), transparent 18%),
+    linear-gradient(180deg, #071118, #03070b 58%);
+  box-shadow: 0 24px 44px rgba(2, 8, 23, 0.24);
+}
+
+.project-flow__canvas-shell .react-flow {
+  background: transparent;
+}
+
+.project-flow__canvas-shell .react-flow__attribution {
+  background: rgba(2, 8, 23, 0.6);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.2rem 0.45rem;
+}
+
+.project-flow__controls {
+  background: rgba(3, 7, 11, 0.86);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 16px 30px rgba(2, 8, 23, 0.25);
+}
+
+:root[data-theme="light"] .project-flow__canvas-shell {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.96));
+  box-shadow: 0 22px 38px rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme="light"] .project-flow__canvas-shell .react-flow__attribution,
+:root[data-theme="light"] .project-flow__controls {
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+.project-flow__status-toast {
+  position: absolute;
+  top: 0.85rem;
+  left: 50%;
+  z-index: 8;
+  transform: translateX(-50%);
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  box-shadow: 0 14px 24px rgba(2, 8, 23, 0.24);
+}
+
+.project-flow__floating-panel {
+  position: absolute;
+  z-index: 8;
+  display: grid;
+  gap: 0.75rem;
+  width: min(22rem, calc(100% - 1.4rem));
+  padding: 0.8rem;
+  border-radius: calc(var(--radius-lg) + 4px);
+  box-shadow: 0 18px 36px rgba(2, 8, 23, 0.28);
+}
+
+.project-flow__floating-panel--library {
+  top: 0.8rem;
+  left: 0.8rem;
+}
+
+.project-flow__floating-panel--settings {
+  top: 0.8rem;
+  right: 0.8rem;
+  width: 14rem;
+}
+
+.project-flow__floating-panel--inspector {
+  top: 4.4rem;
+  right: 0.8rem;
+  width: 19rem;
+  max-height: calc(100% - 5.2rem);
+  overflow: auto;
+}
+
+.project-flow__floating-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--text-strong);
+}
+
+.project-flow__floating-head strong,
+.project-flow__node-button-copy strong,
+.project-flow__checklist-header strong {
+  font-size: 0.86rem;
+  color: var(--text-strong);
+}
+
+.project-flow__node-grid,
+.project-flow__inspector-stack,
+.project-flow__checklist-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.project-flow__ai-panel,
+.project-flow__ai-header,
+.project-flow__ai-chat,
+.project-flow__ai-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.project-flow__workflow-panel,
+.project-flow__workflow-head,
+.project-flow__workflow-actions,
+.project-flow__generator-panel,
+.project-flow__generator-head,
+.project-flow__generator-config,
+.project-flow__generator-advanced,
+.project-flow__generator-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.project-flow__ai-config-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.project-flow__ai-chat {
+  max-height: 18rem;
+  min-height: 14rem;
+  overflow: auto;
+  padding: 0.3rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--panel) 90%, black);
+}
+
+.project-flow__ai-message {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.52);
+}
+
+.project-flow__ai-message + .project-flow__ai-message {
+  margin-top: 0.35rem;
+}
+
+.project-flow__ai-message--user {
+  background: color-mix(in oklab, var(--accent) 14%, var(--panel));
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+}
+
+.project-flow__ai-message-role,
+.project-flow__ai-empty {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.project-flow__ai-message-body,
+.project-flow__ai-empty {
+  white-space: pre-wrap;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.project-flow__ai-empty {
+  padding: 0.75rem;
+}
+
+.project-flow__ai-composer {
+  min-height: 7rem;
+}
+
+.project-flow__ai-actions {
+  grid-template-columns: 1fr auto;
+}
+
+.project-flow__workflow-panel,
+.project-flow__generator-panel {
+  padding: 0.8rem;
+  border-radius: calc(var(--radius-md) + 0.1rem);
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--panel) 92%, black);
+}
+
+.project-flow__workflow-head,
+.project-flow__generator-head {
+  gap: 0.65rem;
+}
+
+.project-flow__workflow-notes,
+.project-flow__generator-prompt {
+  min-height: 8rem;
+}
+
+.project-flow__workflow-meta,
+.project-flow__generator-meta {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.42);
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.project-flow__workflow-meta span:first-child,
+.project-flow__generator-meta span:first-child {
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+.project-flow__workflow-actions,
+.project-flow__generator-actions {
+  grid-template-columns: 1fr auto;
+}
+
+.project-flow__generator-config,
+.project-flow__generator-advanced {
+  grid-template-columns: 1fr 1fr;
+}
+
+.project-flow__node-button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.7rem;
+  text-align: left;
+}
+
+.project-flow__node-button-copy,
+.project-flow__asset-meta {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.project-flow__node-button-copy span,
+.project-flow__status-toast,
+.project-flow__toggle-row span,
+.project-flow__asset-meta span,
+.project-flow__checklist-header span,
+.project-flow-node__heading span,
+.project-flow-node__body,
+.project-flow-node__code,
+.project-flow-node__check,
+.project-flow-node__tag,
+.project-flow-node__resource span,
+.project-flow-node__hint,
+.project-flow-node__count {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.project-flow__toggle-row,
+.project-flow__color-row,
+.project-flow__checklist-item,
+.project-flow__range-row,
+.project-flow__drawing-toolbar {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.project-flow__toggle-row,
+.project-flow__color-row,
+.project-flow__range-row {
+  justify-content: space-between;
+}
+
+.project-flow__input,
+.project-flow__textarea {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--panel) 90%, black);
+  color: var(--text);
+  padding: 0.72rem 0.8rem;
+  font: inherit;
+  outline: none;
+}
+
+.project-flow__input:focus,
+.project-flow__textarea:focus {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+}
+
+.project-flow__input:disabled,
+.project-flow__textarea:disabled,
+.project-flow__ghost-button:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.project-flow__result-block,
+.project-flow__result-link {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.62);
+  color: var(--text);
+}
+
+.project-flow__result-block {
+  max-height: 14rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0.72rem;
+  white-space: pre-wrap;
+  font: 0.76rem/1.45 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.project-flow__result-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.58rem 0.68rem;
+  text-decoration: none;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.project-flow__input--compact {
+  padding: 0.5rem 0.64rem;
+}
+
+.project-flow__textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+
+.project-flow__icon-button {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.project-flow__hidden-input {
+  display: none;
+}
+
+.project-flow__drawing-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+}
+
+.project-flow__drawing-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(3, 7, 11, 0.64);
+}
+
+.project-flow__drawing-modal {
+  position: absolute;
+  inset: 2rem;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border-radius: calc(var(--radius-lg) + 8px);
+  box-shadow: 0 20px 44px rgba(2, 8, 23, 0.34);
+}
+
+.project-flow__drawing-toolbar {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.project-flow__drawing-surface {
+  min-height: 0;
+  overflow: hidden;
+  border-radius: calc(var(--radius-lg) + 4px);
+  border: 1px solid color-mix(in oklab, var(--border) 85%, black);
+  cursor: crosshair;
+}
+
+.project-flow__drawing-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.project-flow-node {
+  --node-accent: #2dd4bf;
+}
+
+.project-flow-node__card {
+  width: 260px;
+  padding: 0.85rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklab, var(--node-accent) 42%, rgba(255, 255, 255, 0.08));
+  background: linear-gradient(180deg, rgba(10, 18, 24, 0.98), rgba(4, 10, 14, 0.96));
+  box-shadow: 0 18px 30px rgba(2, 8, 23, 0.28);
+}
+
+.project-flow-node.is-selected .project-flow-node__card {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--node-accent) 72%, transparent), 0 18px 30px rgba(2, 8, 23, 0.34);
+}
+
+.project-flow-node__meta-row,
+.project-flow-node__drag,
+.project-flow-node__footer,
+.project-flow-node__resource,
+.project-flow-node__progress-block,
+.project-flow-node__art-block,
+.project-flow-node__story-frame {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.project-flow-node__meta-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.project-flow-node__drag {
+  grid-template-columns: auto minmax(0, 1fr);
+  cursor: grab;
+}
+
+.project-flow-node__icon,
+.project-flow__library-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.7rem;
+  color: #041118;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.project-flow__library-icon--project,
+.project-flow-node--project .project-flow-node__icon {
+  background: #2dd4bf;
+}
+
+.project-flow__library-icon--code,
+.project-flow-node--code .project-flow-node__icon {
+  background: #60a5fa;
+}
+
+.project-flow__library-icon--note,
+.project-flow-node--note .project-flow-node__icon {
+  background: #f59e0b;
+}
+
+.project-flow__library-icon--story,
+.project-flow-node--story .project-flow-node__icon {
+  background: #f472b6;
+}
+
+.project-flow__library-icon--art,
+.project-flow-node--art .project-flow-node__icon {
+  background: #a78bfa;
+}
+
+.project-flow__library-icon--document,
+.project-flow-node--document .project-flow-node__icon {
+  background: #38bdf8;
+}
+
+.project-flow__library-icon--url,
+.project-flow-node--url .project-flow-node__icon {
+  background: #14b8a6;
+}
+
+.project-flow__library-icon--image,
+.project-flow-node--image .project-flow-node__icon {
+  background: #fb7185;
+}
+
+.project-flow__library-icon--video,
+.project-flow-node--video .project-flow-node__icon {
+  background: #f97316;
+}
+
+.project-flow__library-icon--drawing,
+.project-flow-node--drawing .project-flow-node__icon {
+  background: #22c55e;
+}
+
+.project-flow__library-icon--ai,
+.project-flow-node--ai .project-flow-node__icon {
+  background: #8b5cf6;
+  color: #f8fafc;
+}
+
+.project-flow__library-icon--imageGenerator,
+.project-flow-node--imageGenerator .project-flow-node__icon {
+  background: #ec4899;
+  color: #fff7fb;
+}
+
+.project-flow__library-icon--videoGenerator,
+.project-flow-node--videoGenerator .project-flow-node__icon {
+  background: #f43f5e;
+  color: #fff7f7;
+}
+
+.project-flow__library-icon--menu {
+  background: #dbeafe;
+  color: #0f172a;
+}
+
+.project-flow-node__heading {
+  display: grid;
+  gap: 0.14rem;
+}
+
+.project-flow-node__heading strong,
+.project-flow-node__resource-main {
+  color: #f8fafc;
+  font-size: 0.92rem;
+}
+
+.project-flow-node__kind-pill {
+  align-self: start;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #dce6f1;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.project-flow-node__body,
+.project-flow-node__code {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.project-flow-node__code {
+  padding: 0.68rem;
+  border-radius: 0.8rem;
+  background: rgba(15, 23, 42, 0.82);
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.project-flow-node__media-shell,
+.project-flow-node__sketch {
+  overflow: hidden;
+  border-radius: 0.88rem;
+  background: rgba(15, 23, 42, 0.82);
+  min-height: 8.75rem;
+}
+
+.project-flow-node__media {
+  width: 100%;
+  height: 8.75rem;
+  object-fit: cover;
+  display: block;
+}
+
+.project-flow-node__sketch {
+  position: relative;
+  background: var(--drawing-background, #081018);
+}
+
+.project-flow-node__sketch-svg {
+  width: 100%;
+  height: 8.75rem;
+  display: block;
+}
+
+.project-flow-node__empty-state {
+  min-height: 8.75rem;
+  display: grid;
+  place-items: center;
+  color: #c8d2dd;
+  font-size: 0.8rem;
+}
+
+.project-flow-node__resource {
+  padding: 0.72rem;
+  border-radius: 0.88rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.project-flow-node__resource-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-flow-node__progress-bar {
+  height: 0.42rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+  overflow: hidden;
+}
+
+.project-flow-node__progress-bar span {
+  display: block;
+  height: 100%;
+  background: var(--node-accent);
+}
+
+.project-flow-node__story-frame,
+.project-flow-node__art-block {
+  padding: 0.7rem;
+  border-radius: 0.88rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.project-flow-node__ai-block,
+.project-flow-node__generator-block {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  border-radius: 0.88rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.project-flow-node__result {
+  max-height: 8rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0.62rem;
+  border-radius: 0.7rem;
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  white-space: pre-wrap;
+  font: 0.7rem/1.42 'IBM Plex Mono', 'Consolas', monospace;
+}
+
+.project-flow-node__status {
+  justify-self: start;
+  padding: 0.2rem 0.46rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #dce6f1;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.project-flow-node__story-index {
+  color: #f8fafc;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.project-flow-node__checklist,
+.project-flow-node__tags {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.project-flow-node__check {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.project-flow-node__check.is-done span:last-child {
+  color: #e2e8f0;
+}
+
+.project-flow-node__footer {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  margin-top: 0.2rem;
+}
+
+.project-flow-node__tags {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.project-flow-node__tag {
+  padding: 0.22rem 0.46rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.project-flow-node__handle {
+  width: 0.65rem;
+  height: 0.65rem;
+  background: var(--node-accent);
+  border: 2px solid #071118;
+}
+
+@media (max-width: 960px) {
+  .project-flow__topbar {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'nodes'
+      'actions'
+      'title';
+  }
+
+  .project-flow__topbar {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .project-flow__board-title {
+    text-align: left;
+  }
+
+  .project-flow__topbar-center,
+  .project-flow__template-rail {
+    justify-content: flex-start;
+  }
+
+  .project-flow__floating-panel--inspector,
+  .project-flow__floating-panel--library,
+  .project-flow__floating-panel--settings {
+    width: min(20rem, calc(100% - 1.2rem));
+  }
+
+  .project-flow__drawing-modal {
+    inset: 1rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .project-flow {
+    padding: 0.4rem;
+  }
+
+  .project-flow__status-toast {
+    left: 0.75rem;
+    transform: none;
+  }
+
+  .project-flow-node__card {
+    width: 220px;
+  }
+}

@@ -1,0 +1,102 @@
+.feature-workspace {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.feature-workspace__eyebrow,
+.feature-placeholder__eyebrow {
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.feature-workspace__title,
+.feature-placeholder__title {
+  color: var(--text-strong);
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0.3rem 0 0;
+}
+
+.feature-workspace__back {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.75rem 0.95rem;
+  background: color-mix(in oklab, var(--panel) 88%, black);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) ease,
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    opacity var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+}
+
+.feature-workspace__back:hover {
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
+  transform: translateY(-1px);
+}
+
+.feature-workspace__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+  position: relative;
+}
+
+.feature-workspace__body > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.feature-workspace__back--floating {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  z-index: 3;
+  box-shadow: 0 10px 20px rgba(2, 8, 23, 0.24);
+}
+
+.feature-workspace__back--inline {
+  box-shadow: none;
+  padding: 0.52rem 0.78rem;
+  white-space: nowrap;
+}
+
+.feature-placeholder {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-lg) + 4px);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--panel-strong) 88%, black), var(--card));
+  padding: 2rem;
+}
+
+.feature-placeholder__body {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  margin: 0.9rem 0 0;
+  max-width: 38rem;
+}
+
+@media (max-width: 640px) {
+  .feature-workspace__back--floating {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+}
