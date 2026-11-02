@@ -4,7 +4,7 @@ import { webRequest } from '../services/webClient';
 
 const STORAGE_KEY_PREFIX = 'deep_canvas_crm_v2';
 const VIEW_STORAGE_KEY_PREFIX = 'deep_canvas_crm_view_v1';
-const CRM_STATE_VERSION = 11;
+const CRM_STATE_VERSION = 12;
 
 export const CRM_MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 export const CRM_MAX_IMPORT_ROWS = 5000;
@@ -728,14 +728,18 @@ type CrmPersonalView = Pick<CrmSnapshot,
   | 'density'
   | 'sortKey'
   | 'sortDirection'
->;
+> & { schemaVersion?: number };
 
 function readLocalView(): CrmPersonalView | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(viewStorageKey());
     if (!raw) return null;
-    const normalized = normalizeSnapshot(JSON.parse(raw));
+    const parsed = JSON.parse(raw) as CrmPersonalView;
+    // Version 12 fixes uploads being hidden by stale shared filters. Reset a
+    // pre-fix personal view once, then preserve preferences normally.
+    if (Number(parsed.schemaVersion ?? 0) < CRM_STATE_VERSION) return null;
+    const normalized = normalizeSnapshot(parsed);
     return {
       searchQuery: normalized.searchQuery,
       stageFilter: normalized.stageFilter,
@@ -768,6 +772,7 @@ function persistSnapshot(snapshot: CrmSnapshot): void {
   try {
     window.localStorage.setItem(localStorageKey(), JSON.stringify(snapshot));
     const personalView: CrmPersonalView = {
+      schemaVersion: CRM_STATE_VERSION,
       searchQuery: snapshot.searchQuery,
       stageFilter: snapshot.stageFilter,
       statusFilter: snapshot.statusFilter,
@@ -910,10 +915,18 @@ export function parseCrmCsv(content: string): CrmCsvParseResult {
   }
 
   const [headerLine, ...rowLines] = lines;
-  const headers = parseCsvLine(headerLine).map((header, index) => cleanText(header, 120) || `Column ${index + 1}`);
+  const firstCells = parseCsvLine(headerLine);
+  // Some lead vendors export raw rows with no heading line. Treating that
+  // first lead as column labels silently dropped it and made the mapping UI
+  // look like the remaining data was shifted. Preserve every row when none
+  // of the first-line cells resembles a supported CRM heading.
+  const hasHeaderRow = firstCells.some((cell) => resolveCoreField(cell) !== null);
+  const headers = hasHeaderRow
+    ? firstCells.map((header, index) => cleanText(header, 120) || `Column ${index + 1}`)
+    : firstCells.map((_, index) => `Column ${index + 1}`);
   return {
     headers,
-    rows: rowLines.map(parseCsvLine),
+    rows: (hasHeaderRow ? rowLines : lines).map(parseCsvLine),
   };
 }
 
@@ -1123,6 +1136,9 @@ function applyMappedImport(
   };
 
   const nextLeads: CrmLead[] = [];
+  // One timestamp per file keeps the source file's row ordering stable when
+  // the default CRM view sorts the newest import batch first.
+  const importTimestamp = nowIso();
   importRows.forEach((row, rowIndex) => {
     if (!row.some((cell) => cell.trim().length > 0)) {
       result.skippedInvalidCount += 1;
@@ -1140,8 +1156,8 @@ function applyMappedImport(
       customFields: {},
       notes: [],
       isNew: true,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
+      createdAt: importTimestamp,
+      updatedAt: importTimestamp,
     };
 
     headerMappings.forEach(({ index, kind, key }) => {

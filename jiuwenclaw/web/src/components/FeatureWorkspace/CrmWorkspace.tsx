@@ -415,6 +415,11 @@ export function CrmWorkspace({ onExit }: CrmWorkspaceProps) {
     return matchingLeads.sort((left, right) => {
       if (sortKey) return compareLeads(left, right, sortKey, sortDirection);
       if (left.isNew !== right.isNew) return left.isNew ? -1 : 1;
+      // A legacy migration marked every lead as NEW. Use the import timestamp
+      // as the secondary default so a newly uploaded batch still appears at
+      // the top, while the stable sort preserves row order within that batch.
+      const importedComparison = Date.parse(right.createdAt || '') - Date.parse(left.createdAt || '');
+      if (Number.isFinite(importedComparison) && importedComparison !== 0) return importedComparison;
       return 0;
     });
   }, [batchFilter, leads, searchQuery, sourceFilter, sortDirection, sortKey, stageFilter]);
@@ -660,7 +665,14 @@ export function CrmWorkspace({ onExit }: CrmWorkspaceProps) {
     setCsvImportHeaders(parsed.headers);
     setCsvImportRows(parsed.rows.slice(0, 4));
     setCsvImportMappings(getDefaultCrmImportMappings(parsed.headers));
-    setImportMessage(parsed.rows.length > CRM_MAX_IMPORT_ROWS ? `Only the first ${CRM_MAX_IMPORT_ROWS} rows will be imported from ${file.name}.` : '');
+    const headerless = parsed.headers.every((header, index) => header === `Column ${index + 1}`);
+    setImportMessage(
+      headerless
+        ? 'No header row was detected. The first lead is preserved; match each column before importing.'
+        : parsed.rows.length > CRM_MAX_IMPORT_ROWS
+          ? `Only the first ${CRM_MAX_IMPORT_ROWS} rows will be imported from ${file.name}.`
+          : '',
+    );
     setCsvImportOpen(true);
   }
 
@@ -792,17 +804,29 @@ export function CrmWorkspace({ onExit }: CrmWorkspaceProps) {
     setBatchDeleteConfirm('');
   }
 
-  function handleConfirmImport() {
+  async function handleConfirmImport() {
     const cleanBatchName = csvImportBatchName.trim() || csvImportName.replace(/\.[^.]+$/, '') || `CSV import ${new Date().toLocaleDateString()}`;
     const result = importMappedCsv(csvImportContent, csvImportMappings, cleanBatchName);
+    const saved = result.importedCount === 0 || await flushChanges();
+    if (result.importedCount > 0) {
+      // Never leave a successful upload hidden behind the user's previous
+      // search/filter/sort view. Show the imported rows in their file order.
+      setSearchQuery('');
+      setStageFilter('all');
+      setSourceFilter('all');
+      setBatchFilter(cleanBatchName);
+      setSort('');
+    }
     const skippedParts = [
       result.skippedDuplicateCount > 0 ? `${result.skippedDuplicateCount} duplicates skipped` : '',
       result.skippedInvalidCount > 0 ? `${result.skippedInvalidCount} invalid rows skipped` : '',
       result.skippedLimitCount > 0 ? `${result.skippedLimitCount} rows over the import limit skipped` : '',
     ].filter(Boolean);
     setImportMessage(
-      result.importedCount > 0
+      result.importedCount > 0 && saved
         ? `Imported ${result.importedCount} leads into "${cleanBatchName}".${skippedParts.length ? ` ${skippedParts.join(', ')}.` : ''}`
+        : result.importedCount > 0
+          ? `Imported ${result.importedCount} leads locally, but the server save failed. Keep this page open and try again.`
         : `No leads were imported from ${csvImportName}.${skippedParts.length ? ` ${skippedParts.join(', ')}.` : ''}`
     );
     setCsvImportOpen(false);
