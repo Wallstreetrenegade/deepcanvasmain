@@ -168,6 +168,12 @@ def _create_token(con: sqlite3.Connection, user_id: str) -> tuple[str, int]:
 
 
 def signup(email: str, password: str, display_name: str = "") -> dict[str, Any]:
+    allow_signups = os.getenv("DEEPCANVAS_ALLOW_SIGNUPS", "true").strip().lower()
+    if allow_signups not in {"1", "true", "yes", "on"}:
+        raise AuthError(
+            "New account registration is currently disabled. Contact your administrator.",
+            "SIGNUPS_DISABLED",
+        )
     email_norm = _normalize_email(email)
     if not _EMAIL_RE.match(email_norm):
         raise AuthError("Enter a valid email address.", "INVALID_EMAIL")
