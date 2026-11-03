@@ -38,12 +38,46 @@ import { TeamUp } from './components/TeamUp';
 import { Dialer } from './components/Dialer';
 import { AgentMode, Message, UserAnswer } from './types';
 import { useSessionStore, useChatStore, useTodoStore } from './stores';
-import { useFeatureStore } from './stores/featureStore';
+import { FEATURE_ORDER, useFeatureStore, type FeatureKey } from './stores/featureStore';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import './App.css';
 
 type MainNavKey = 'chat' | 'skills' | 'agents' | 'sessions' | 'heartbeat' | 'cron' | 'channels' | 'configpanel' | 'browserpanel' | 'updatepanel';
+
+const WORKSPACE_STORAGE_KEY = 'deepcanvas_workspace';
+const MAIN_NAV_KEYS: MainNavKey[] = ['chat', 'skills', 'agents', 'sessions', 'heartbeat', 'cron', 'channels', 'configpanel', 'browserpanel', 'updatepanel'];
+
+interface StoredWorkspace {
+  activeNav: MainNavKey;
+  activeFeature: FeatureKey | null;
+}
+
+function getStoredWorkspace(userId: string): StoredWorkspace {
+  const fallback: StoredWorkspace = { activeNav: 'chat', activeFeature: null };
+  try {
+    const raw = localStorage.getItem(`${WORKSPACE_STORAGE_KEY}_${userId}`);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<StoredWorkspace>;
+    const activeNav = MAIN_NAV_KEYS.includes(parsed.activeNav as MainNavKey)
+      ? parsed.activeNav as MainNavKey
+      : 'chat';
+    const activeFeature = FEATURE_ORDER.includes(parsed.activeFeature as FeatureKey)
+      ? parsed.activeFeature as FeatureKey
+      : null;
+    return { activeNav, activeFeature: activeNav === 'chat' ? activeFeature : null };
+  } catch {
+    return fallback;
+  }
+}
+
+function storeWorkspace(userId: string, workspace: StoredWorkspace): void {
+  try {
+    localStorage.setItem(`${WORKSPACE_STORAGE_KEY}_${userId}`, JSON.stringify(workspace));
+  } catch {
+    // Browsers may block storage in hardened/private modes; navigation still works normally.
+  }
+}
 
 // 错误边界组件
 interface ErrorBoundaryState {
@@ -391,12 +425,17 @@ function AuthScreen({
 function AppContent({ authSession, onSignOut }: { authSession: AuthSession; onSignOut: () => void }) {
   const { t } = useTranslation();
   const userSessionStorageKey = `${SESSION_STORAGE_KEY}_${authSession.user.id}`;
+  const initialWorkspaceRef = useRef<StoredWorkspace | null>(null);
+  if (!initialWorkspaceRef.current) {
+    initialWorkspaceRef.current = getStoredWorkspace(authSession.user.id);
+    useFeatureStore.setState({ activeFeature: initialWorkspaceRef.current.activeFeature });
+  }
   // 优先使用存储的会话 ID，避免每次刷新创建新会话
   const [sessionId, setSessionId] = useState<string>(() => {
     const stored = getStoredSessionId(userSessionStorageKey);
     return stored || 'new';
   });
-  const [activeNav, setActiveNav] = useState<MainNavKey>('chat');
+  const [activeNav, setActiveNav] = useState<MainNavKey>(() => initialWorkspaceRef.current?.activeNav || 'chat');
   const [serverConfig, setServerConfig] = useState<Record<string, unknown> | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
@@ -415,6 +454,9 @@ function AppContent({ authSession, onSignOut }: { authSession: AuthSession; onSi
   const [configInitialExpandGroup, setConfigInitialExpandGroup] = useState<string | null>(null);
   const activeFeature = useFeatureStore((state) => state.activeFeature);
   const closeFeature = useFeatureStore((state) => state.closeFeature);
+  useEffect(() => {
+    storeWorkspace(authSession.user.id, { activeNav, activeFeature });
+  }, [activeFeature, activeNav, authSession.user.id]);
   useEffect(() => {
     if (activeNav !== 'configpanel') {
       setConfigInitialExpandGroup(null);
