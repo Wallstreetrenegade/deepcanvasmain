@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Deep Canvas Google Sheets CRM sync every minute
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+AccuracySec=5
+Persistent=true
+Unit=deepcanvas-sheets-sync.service
+
+[Install]
+WantedBy=timers.target

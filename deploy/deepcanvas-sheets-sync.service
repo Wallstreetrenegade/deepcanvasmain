@@ -1,0 +1,8 @@
+[Unit]
+Description=Deep Canvas Google Sheets CRM lead sync
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec deepcanvas-app python -m jiuwenclaw.google_sheets_sync
