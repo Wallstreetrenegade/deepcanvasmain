@@ -357,6 +357,14 @@ export function CrmWorkspace({ onExit }: CrmWorkspaceProps) {
     [customColumns]
   );
 
+  // A removed/renamed source or batch can remain in a user's local view. A
+  // controlled <select> then looks like "All" even though the stale value is
+  // still filtering every row out. Repair that personal view automatically.
+  useEffect(() => {
+    if (sourceFilter !== 'all' && !sourceOptions.includes(sourceFilter)) setSourceFilter('all');
+    if (batchFilter !== 'all' && !batchOptions.includes(batchFilter)) setBatchFilter('all');
+  }, [batchFilter, batchOptions, setBatchFilter, setSourceFilter, sourceFilter, sourceOptions]);
+
   const handleColumnResizeStart = (event: ReactPointerEvent<HTMLSpanElement>, key: string) => {
     event.preventDefault();
     event.stopPropagation();
@@ -391,11 +399,13 @@ export function CrmWorkspace({ onExit }: CrmWorkspaceProps) {
 
   const filteredLeads = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    const activeSourceFilter = sourceFilter === 'all' || sourceOptions.includes(sourceFilter) ? sourceFilter : 'all';
+    const activeBatchFilter = batchFilter === 'all' || batchOptions.includes(batchFilter) ? batchFilter : 'all';
 
     const matchingLeads = [...leads]
       .filter((lead) => (stageFilter === 'all' ? true : lead.stage === stageFilter))
-      .filter((lead) => (sourceFilter === 'all' ? true : lead.source === sourceFilter))
-      .filter((lead) => (batchFilter === 'all' ? true : getLeadBatch(lead) === batchFilter))
+      .filter((lead) => (activeSourceFilter === 'all' ? true : lead.source === activeSourceFilter))
+      .filter((lead) => (activeBatchFilter === 'all' ? true : getLeadBatch(lead) === activeBatchFilter))
       .filter((lead) => {
         if (!query) return true;
 
@@ -422,7 +432,7 @@ export function CrmWorkspace({ onExit }: CrmWorkspaceProps) {
       if (Number.isFinite(importedComparison) && importedComparison !== 0) return importedComparison;
       return 0;
     });
-  }, [batchFilter, leads, searchQuery, sourceFilter, sortDirection, sortKey, stageFilter]);
+  }, [batchFilter, batchOptions, leads, searchQuery, sourceFilter, sourceOptions, sortDirection, sortKey, stageFilter]);
 
   const selectedLead = leads.find((lead) => lead.id === detailLeadId) ?? null;
 
