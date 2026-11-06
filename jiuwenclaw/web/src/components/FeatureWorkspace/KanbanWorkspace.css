@@ -20,6 +20,10 @@
   min-height: 0;
 }
 
+.feature-kanban--intake-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .feature-kanban__intake,
 .feature-kanban__board-shell {
   min-height: 0;
@@ -64,6 +68,48 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.55rem;
+}
+
+.feature-kanban__panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.feature-kanban__collapse-button,
+.feature-kanban__restore-intake {
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--accent) 9%, var(--panel));
+  color: var(--text-strong);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.feature-kanban__collapse-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.feature-kanban__restore-intake {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  margin-bottom: 0.38rem;
+  padding: 0.35rem 0.62rem;
+  font-size: 0.68rem;
+}
+
+.feature-kanban__collapse-button:hover,
+.feature-kanban__restore-intake:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .feature-kanban__eyebrow {

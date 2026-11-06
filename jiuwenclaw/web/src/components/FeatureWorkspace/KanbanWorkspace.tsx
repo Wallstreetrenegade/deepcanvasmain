@@ -38,6 +38,16 @@ function formatCountLabel(count: number, singular: string, plural: string): stri
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+const INTAKE_COLLAPSED_STORAGE_KEY = 'deepcanvas_kanban_intake_collapsed';
+
+function getInitialIntakeCollapsed(): boolean {
+  try {
+    return localStorage.getItem(INTAKE_COLLAPSED_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 export function KanbanWorkspace({ onExit }: { onExit: () => void }) {
   const entries = useKanbanStore((state) => state.entries);
   const columns = useKanbanStore((state) => state.columns);
@@ -77,6 +87,7 @@ export function KanbanWorkspace({ onExit }: { onExit: () => void }) {
   const [quickSubtaskDrafts, setQuickSubtaskDrafts] = useState<Record<string, string>>({});
   const [dropColumnId, setDropColumnId] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [intakeCollapsed, setIntakeCollapsed] = useState(getInitialIntakeCollapsed);
   const [detailSelection, setDetailSelection] = useState<DetailSelection | null>(null);
   const [workspaceView, setWorkspaceView] = useState<'board' | 'calendar'>('board');
   const activeBoard = boards.find((board) => board.id === activeBoardId) ?? boards[0];
@@ -91,6 +102,14 @@ export function KanbanWorkspace({ onExit }: { onExit: () => void }) {
     setBoardNameDraft(activeBoard?.name ?? 'Delivery Flow');
     setBoardSaveStatus('');
   }, [activeBoardId, activeBoard?.name]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(INTAKE_COLLAPSED_STORAGE_KEY, String(intakeCollapsed));
+    } catch {
+      // The panel still collapses when browser storage is unavailable.
+    }
+  }, [intakeCollapsed]);
 
   const columnCards = useMemo(() => {
     return columns.reduce<Record<string, KanbanCard[]>>((accumulator, column) => {
@@ -187,15 +206,26 @@ export function KanbanWorkspace({ onExit }: { onExit: () => void }) {
         <button type="button" role="tab" aria-selected={workspaceView === 'calendar'} className={workspaceView === 'calendar' ? 'is-active' : ''} onClick={() => setWorkspaceView('calendar')}>Calendar</button>
       </div>
       {workspaceView === 'calendar' ? <KanbanCalendarView onExit={onExit} /> : (
-      <div className="feature-kanban">
-      <section className="feature-kanban__intake" aria-label="Task intake">
+      <div className={`feature-kanban ${intakeCollapsed ? 'feature-kanban--intake-collapsed' : ''}`}>
+      {!intakeCollapsed ? <section className="feature-kanban__intake" aria-label="Task intake">
         <div className="feature-kanban__panel feature-kanban__panel--composer">
           <div className="feature-kanban__panel-header">
             <div>
               <div className="feature-kanban__eyebrow">Task Intake</div>
               <h2 className="feature-kanban__panel-title">Build Tasks</h2>
             </div>
-            <div className="feature-kanban__stat-pill">{formatCountLabel(intakeCount, 'task', 'tasks')}</div>
+            <div className="feature-kanban__panel-actions">
+              <div className="feature-kanban__stat-pill">{formatCountLabel(intakeCount, 'task', 'tasks')}</div>
+              <button
+                type="button"
+                className="feature-kanban__collapse-button"
+                onClick={() => setIntakeCollapsed(true)}
+                aria-label="Collapse task intake"
+                title="Collapse task intake"
+              >
+                ‹
+              </button>
+            </div>
           </div>
 
           <button
@@ -347,11 +377,21 @@ export function KanbanWorkspace({ onExit }: { onExit: () => void }) {
             )}
           </div>
         </div>
-      </section>
+      </section> : null}
 
       <section className="feature-kanban__board-shell" aria-label="Kanban board">
         <div className="feature-kanban__board-toolbar">
           <div className="feature-kanban__board-heading">
+            {intakeCollapsed ? (
+              <button
+                type="button"
+                className="feature-kanban__restore-intake"
+                onClick={() => setIntakeCollapsed(false)}
+                aria-label="Expand task intake"
+              >
+                <span aria-hidden="true">›</span> Task intake
+              </button>
+            ) : null}
             <div className="feature-kanban__eyebrow">Kanban Board</div>
             <h2 className="feature-kanban__panel-title feature-kanban__panel-title--board">{activeBoard?.name ?? 'Delivery Flow'}</h2>
           </div>
